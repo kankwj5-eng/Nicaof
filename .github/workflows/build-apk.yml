@@ -30,14 +30,19 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Instalar EAS CLI
-        run: npm install -g eas-cli
+      - name: Generar proyecto nativo Android (expo prebuild)
+        run: npx expo prebuild --platform android --no-install
 
-      - name: Compilar APK localmente
-        run: eas build --platform android --profile preview --local --non-interactive --output ./app-release.apk
+      - name: Dar permisos de ejecución a Gradle
+        run: chmod +x android/gradlew
+
+      - name: Compilar APK con Gradle
+        run: |
+          cd android
+          ./gradlew assembleRelease
 
       - name: Subir APK como artefacto
         uses: actions/upload-artifact@v4
         with:
           name: apk-compilado
-          path: ./app-release.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
