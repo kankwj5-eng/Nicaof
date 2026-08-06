@@ -1,69 +1,45 @@
-name: Build Android APK
+name: Compilar APK
 
 on:
+  workflow_dispatch:
   push:
     branches:
-      - main
-      - master
-  workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'Build Type (debug or release)'
-        required: true
-        default: 'debug'
-        type: choice
-        options:
-          - debug
-          - release
+      - principal
 
 jobs:
   build:
-    name: Build Android APK
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Clonar repositorio
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9.12.0
-
-      - name: Setup Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
 
-      - name: Install dependencies
+      - name: Configurar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Instalar dependencias
         run: pnpm install --frozen-lockfile
 
-      - name: Setup Java JDK 17
+      - name: Instalar Java (necesario para Gradle/Android)
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: gradle
+          distribution: temurin
+          java-version: 17
 
-      - name: Expo Android Prebuild
-        run: pnpm exec expo prebuild --platform android --no-install
+      - name: Instalar EAS CLI
+        run: npm install -g eas-cli
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./android/gradlew
+      - name: Compilar APK localmente
+        run: eas build --platform android --profile preview --local --non-interactive --output ./app-release.apk
 
-      - name: Build Android App (APK)
-        run: |
-          cd android
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.build_type }}" = "release" ]; then
-            ./gradlew assembleRelease
-          else
-            ./gradlew assembleDebug
-          fi
-
-      - name: Find and Upload APK Artifact
+      - name: Subir APK como artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk-${{ github.event.inputs.build_type || 'debug' }}
-          path: android/app/build/outputs/apk/**/*.apk
-          retention-days: 7
+          name: apk-compilado
+          path: ./app-release.apk
